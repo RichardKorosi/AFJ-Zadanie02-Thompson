@@ -12,13 +12,13 @@ class Transition:
 
 
 class State:
-    def __init__(self, state_id, start, valid):
+    def __init__(self, state_id, start, accept):
         self.state_id = state_id
         self.start = start
-        self.valid = valid
+        self.accept = accept
 
     def __str__(self):
-        return f'State(state_id: {self.state_id}, start: {self.start}, valid: {self.valid})'
+        return f'State(state_id: {self.state_id}, start: {self.start}, accept: {self.accept})'
 
 
 class Automata:
@@ -48,25 +48,49 @@ def union(one, two):
     pass
 
 
-def concat(one, two):
-    pass
+def concat(id_ctr, automata_left, automata_right):
+    new_automata_states = []
+    new_automata_transitions = automata_left.transitions.copy() + automata_right.transitions.copy()
+    accepts_left = []
+    start_right = None
+
+    for state in automata_left.states.copy():
+        if state.accept:
+            accepts_left.append(state)
+            state.accept = False
+        new_automata_states.append(state)
+
+    for state in automata_right.states:
+        new_automata_states.append(state)
+
+    for state in automata_right.states:
+        if state.start:
+            start_right = state
+            state.start = False
+
+    for state in accepts_left:
+        new_transition = Transition(state, start_right, "")
+        new_automata_transitions.append(new_transition)
+
+    new_automata = Automata(new_automata_states, new_automata_transitions)
+    automatas.append(new_automata)
 
 
 def iteration(id_ctr, automata):
     new_automata = Automata(automata.states.copy(), automata.transitions.copy())
     old_start = None
-    new_start = State(id_ctr, 1, True)
-    valid = [new_start]
+    new_start = State(id_ctr, True, True)
+    accept = [new_start]
     for state in automata.states:
-        if state.start == 1:
-            state.start = 0
+        if state.start:
+            state.start = False
             old_start = state
-        if state.valid:
-            valid.append(state)
+        if state.accept:
+            accept.append(state)
 
     new_automata.states.append(new_start)
 
-    for state in valid:
+    for state in accept:
         new_transition = Transition(state, old_start, "")
         new_automata.transitions.append(new_transition)
 
@@ -74,12 +98,12 @@ def iteration(id_ctr, automata):
 
 
 def create_automata(id_ctr, row):
-    new_start = State(id_ctr, 1, False)
+    new_start = State(id_ctr, True, False)
     id_ctr += 1
-    new_valid = State(id_ctr, 0, True)
+    new_accept = State(id_ctr, False, True)
     id_ctr += 1
-    new_transition = Transition(new_start, new_valid, row[0])
-    new_automata = Automata([new_start, new_valid], [new_transition])
+    new_transition = Transition(new_start, new_accept, row[0])
+    new_automata = Automata([new_start, new_accept], [new_transition])
     automatas.append(new_automata)
 
 
@@ -101,7 +125,7 @@ def app(id_ctr):
                 dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])])
                 id_ctr += 1
             elif len(arguments) == 2:
-                dictionaryOperations[operation](arguments[0], arguments[1])
+                dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])], automatas[int(arguments[1])])
         else:
             create_automata(id_ctr, row)
             id_ctr += 2

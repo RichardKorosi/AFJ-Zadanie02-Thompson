@@ -1,5 +1,7 @@
 import sys
 
+# TODO: Treba sa pozriet na to ze po concate maju viacere States rovnake ID
+
 
 class Transition:
     def __init__(self, state, next_state, symbol):

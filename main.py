@@ -13,6 +13,9 @@ class Transition:
     def __str__(self):
         return f'(form: {self.from_state.id()}, to: {self.to_state.id()}, symbol: {self.symbol})'
 
+    def copy(self):
+        return State(self.from_state, self.to_state, self.symbol)
+
 
 class State:
     def __init__(self, state_id, start, accept):
@@ -25,6 +28,9 @@ class State:
 
     def id(self):
         return f'{self.state_id}'
+
+    def copy(self):
+        return State(self.state_id, self.start, self.accept)
 
 
 class Automata:
@@ -56,23 +62,30 @@ def union(one, two):
 
 def concat(id_ctr, automata_left, automata_right):
     new_automata_states = []
-    new_automata_transitions = automata_left.transitions.copy() + automata_right.transitions.copy()
+    new_automata_transitions = automata_left.transitions
     accepts_left = []
     start_right = None
+    highest_left_id = max([state.state_id for state in automata_left.states])
+    index = 1
 
-    for state in automata_left.states.copy():
-        if state.accept:
-            accepts_left.append(state)
-            state.accept = False
-        new_automata_states.append(state)
+    # Remove accept from left automata, in new automata
+    for state in automata_left.states:
+        newState = state.copy()
+        if newState.accept:
+            newState.accept = False
+            accepts_left.append(newState)
+        new_automata_states.append(newState)
 
+    # Change IDs in right automata, in new automata
+    # Also remove start from right automata, in new automata
     for state in automata_right.states:
-        new_automata_states.append(state)
-
-    for state in automata_right.states:
-        if state.start:
-            start_right = state
-            state.start = False
+        newState = state.copy()
+        newState.state_id = highest_left_id + index
+        index += 1
+        if newState.start:
+            start_right = newState
+            newState.start = False
+        new_automata_states.append(newState)
 
     for state in accepts_left:
         new_transition = Transition(state, start_right, "")
@@ -86,19 +99,19 @@ def iteration(id_ctr, automata):
     new_automata = Automata(automata.states.copy(), automata.transitions.copy())
     old_start = None
     new_start = State(id_ctr, True, True)
-    accept = [new_start]
-    for state in automata.states:
+    accept_states = [new_start]
+
+    for state in new_automata.states:
         if state.start:
             state.start = False
             old_start = state
         if state.accept:
-            accept.append(state)
+            accept_states.append(state)
 
     new_automata.states.append(new_start)
 
-    for state in accept:
-        new_transition = Transition(state, old_start, "")
-        new_automata.transitions.append(new_transition)
+    for accept_state in accept_states:
+        new_automata.transitions.append(Transition(accept_state, old_start, ""))
 
     automatas.append(new_automata)
 

@@ -49,7 +49,7 @@ class Automata:
 # regex_f = open(sys.argv[1], "r")
 # texts_f = open(sys.argv[2], "r")
 
-regex_f = open("my_regex.txt", "r")
+regex_f = open("regex1.txt", "r")
 texts_f = open("my_retazce.txt", "r")
 
 regex = [None] + [line.strip().split(',') for line in regex_f.readlines()]
@@ -81,6 +81,7 @@ def union(id_ctr, a_l, a_r):
     new_automata.states.append(new_start)
     new_automata.transitions += transitions
     automatas.append(new_automata)
+    return 1
 
 
 def concat(id_ctr, a_l, a_r):
@@ -123,6 +124,7 @@ def concat(id_ctr, a_l, a_r):
 
     new_automata = Automata(new_automata_states, new_automata_transitions)
     automatas.append(new_automata)
+    return 0
 
 
 def iteration(id_ctr, automata):
@@ -182,7 +184,10 @@ def app(id_ctr):
                 dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])])
                 id_ctr += 1
             elif len(arguments) == 2:
-                dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])], automatas[int(arguments[1])])
+                result = dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])],
+                                                         automatas[int(arguments[1])])
+                if result == 1:
+                    id_ctr += 1
         else:
             id_ctr = id_ctr + 2 if create_automata(id_ctr, row) == 2 else id_ctr + 1
 

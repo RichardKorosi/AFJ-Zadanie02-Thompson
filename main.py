@@ -1,17 +1,17 @@
 import sys
 
+
 # TODO: Treba sa pozriet na to ze po concate maju viacere States rovnake ID
-# TODO: Treba osetrit prazdny string ako symbol epsilon
 
 
 class Transition:
-    def __init__(self, state, next_state, symbol):
-        self.state = state
-        self.next_state = next_state
+    def __init__(self, from_state, to_state, symbol):
+        self.from_state = from_state
+        self.to_state = to_state
         self.symbol = symbol
 
     def __str__(self):
-        return f'Transition(state: {self.state}, next_state: {self.next_state}, symbol: {self.symbol})'
+        return f'(form: {self.from_state.id()}, to: {self.to_state.id()}, symbol: {self.symbol})'
 
 
 class State:
@@ -21,7 +21,10 @@ class State:
         self.accept = accept
 
     def __str__(self):
-        return f'State(state_id: {self.state_id}, start: {self.start}, accept: {self.accept})'
+        return f'(ID: {self.state_id}, start: {self.start}, accept: {self.accept})'
+
+    def id(self):
+        return f'{self.state_id}'
 
 
 class Automata:
@@ -32,7 +35,7 @@ class Automata:
     def __str__(self):
         state_str = ', '.join(str(state) for state in self.states)
         transition_str = ', '.join(str(transition) for transition in self.transitions)
-        return f'Automata(states: [{state_str}], transitions: [{transition_str}])'
+        return f'Automata(States: [{state_str}], Transitions: [{transition_str}])'
 
 
 # regex_f = open(sys.argv[1], "r")
@@ -101,13 +104,21 @@ def iteration(id_ctr, automata):
 
 
 def create_automata(id_ctr, row):
-    new_start = State(id_ctr, True, False)
-    id_ctr += 1
-    new_accept = State(id_ctr, False, True)
-    id_ctr += 1
-    new_transition = Transition(new_start, new_accept, row[0])
-    new_automata = Automata([new_start, new_accept], [new_transition])
-    automatas.append(new_automata)
+    if len(row[0]) == 0:
+        new_start = State(id_ctr, True, True)
+        new_automata = Automata([new_start], [])
+        automatas.append(new_automata)
+        id_ctr += 1
+        return 1
+    else:
+        new_start = State(id_ctr, True, False)
+        id_ctr += 1
+        new_accept = State(id_ctr, False, True)
+        id_ctr += 1
+        new_transition = Transition(new_start, new_accept, row[0])
+        new_automata = Automata([new_start, new_accept], [new_transition])
+        automatas.append(new_automata)
+        return 2
 
 
 dictionaryOperations = {
@@ -130,8 +141,7 @@ def app(id_ctr):
             elif len(arguments) == 2:
                 dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])], automatas[int(arguments[1])])
         else:
-            create_automata(id_ctr, row)
-            id_ctr += 2
+            id_ctr = id_ctr + 2 if create_automata(id_ctr, row) == 2 else id_ctr + 1
 
     for automata in automatas[1:]:
         print(automata)

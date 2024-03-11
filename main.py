@@ -1,6 +1,7 @@
 import sys
 
 # TODO: Treba sa pozriet na to ze po concate maju viacere States rovnake ID
+# TODO: Treba osetrit prazdny string ako symbol epsilon
 
 
 class Transition:

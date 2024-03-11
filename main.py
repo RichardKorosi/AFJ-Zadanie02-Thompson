@@ -49,7 +49,7 @@ class Automata:
 # regex_f = open(sys.argv[1], "r")
 # texts_f = open(sys.argv[2], "r")
 
-regex_f = open("regex1.txt", "r")
+regex_f = open("regex4.txt", "r")
 texts_f = open("my_retazce.txt", "r")
 
 regex = [None] + [line.strip().split(',') for line in regex_f.readlines()]
@@ -58,33 +58,50 @@ texts = [line.split() for line in texts_f.readlines()]
 automatas = [None]
 
 
-def union(id_ctr, a_l, a_r):
+def union(a_l, a_r):
     automata_left = a_l.copy()
     automata_right = a_r.copy()
-    new_automata = Automata(automata_left.states + automata_right.states,
-                            automata_left.transitions + automata_right.transitions)
+    new_automata_states = []
+    new_automata_transitions = automata_left.transitions + automata_right.transitions
+    highest_left_id = max([state.state_id for state in automata_left.states])
+    index = 1
+
     left_start = None
     right_start = None
+
     for state in automata_left.states:
         if state.start:
             left_start = state
             state.start = False
+        new_automata_states.append(state)
 
+    map_new_id_to_states = {}
     for state in automata_right.states:
+        old_id = state.state_id
+        state.state_id = highest_left_id + index
+        map_new_id_to_states[old_id] = state
+        index += 1
         if state.start:
             right_start = state
             state.start = False
+        new_automata_states.append(state)
 
-    new_start = State(id_ctr, True, False)
-    id_ctr += 1
+    # Update transitions in right automata, in new automata
+    for transition in automata_right.transitions:
+        transition.from_state = map_new_id_to_states[transition.from_state.state_id]
+        transition.to_state = map_new_id_to_states[transition.to_state.state_id]
+
+    new_start_id = highest_left_id + index
+    new_start = State(new_start_id, True, False)
     transitions = [Transition(new_start, left_start, ""), Transition(new_start, right_start, "")]
-    new_automata.states.append(new_start)
-    new_automata.transitions += transitions
+    new_automata_states.append(new_start)
+    new_automata_transitions += transitions
+    new_automata = Automata(new_automata_states, new_automata_transitions)
     automatas.append(new_automata)
     return 1
 
 
-def concat(id_ctr, a_l, a_r):
+def concat(a_l, a_r):
     automata_left = a_l.copy()
     automata_right = a_r.copy()
     new_automata_states = []
@@ -127,28 +144,36 @@ def concat(id_ctr, a_l, a_r):
     return 0
 
 
-def iteration(id_ctr, automata):
-    new_automata = automata.copy()
+def iteration(a):
+    automata = a.copy()
+    new_automata_states = []
+    new_automata_transitions = automata.transitions
+    highest_id = max([state.state_id for state in automata.states])
+    index = 1
+    new_start = State(highest_id + index, True, True)
     old_start = None
-    new_start = State(id_ctr, True, True)
     accept_states = [new_start]
 
-    for state in new_automata.states:
+    for state in automata.states:
         if state.start:
-            state.start = False
             old_start = state
+            state.start = False
         if state.accept:
             accept_states.append(state)
+        new_automata_states.append(state)
 
-    new_automata.states.append(new_start)
+    new_automata_states.append(new_start)
 
     for accept_state in accept_states:
-        new_automata.transitions.append(Transition(accept_state, old_start, ""))
+        new_automata_transitions.append(Transition(accept_state, old_start, ""))
 
+    new_automata = Automata(new_automata_states, new_automata_transitions)
     automatas.append(new_automata)
+    return 0
 
 
-def create_automata(id_ctr, row):
+def create_automata(row):
+    id_ctr = 0
     if len(row[0]) == 0:
         new_start = State(id_ctr, True, True)
         new_automata = Automata([new_start], [])
@@ -173,7 +198,7 @@ dictionaryOperations = {
 }
 
 
-def app(id_ctr):
+def app():
     for i in range(1, len(regex)):
         row = regex[i]
         operation = row[0]
@@ -181,18 +206,14 @@ def app(id_ctr):
         if operation in dictionaryOperations:
             if len(arguments) == 1:
                 pass
-                dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])])
-                id_ctr += 1
+                dictionaryOperations[operation](automatas[int(arguments[0])])
             elif len(arguments) == 2:
-                result = dictionaryOperations[operation](id_ctr, automatas[int(arguments[0])],
-                                                         automatas[int(arguments[1])])
-                if result == 1:
-                    id_ctr += 1
+                dictionaryOperations[operation](automatas[int(arguments[0])], automatas[int(arguments[1])])
         else:
-            id_ctr = id_ctr + 2 if create_automata(id_ctr, row) == 2 else id_ctr + 1
+            create_automata(row)
 
     for automata in automatas[1:]:
         print(automata)
 
 
-app(0)
+app()

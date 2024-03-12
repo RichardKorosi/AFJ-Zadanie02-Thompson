@@ -1,6 +1,5 @@
 import sys
 
-# TODO: PRI VYTVORENI CEZ EPSILON, MA IST ASI Z STATU DO STATU PRAZDNA TRANSITION
 
 class Transition:
     def __init__(self, from_state, to_state, symbol):
@@ -177,7 +176,8 @@ def create_automata(row):
     id_ctr = 0
     if len(row[0]) == 0:
         new_start = State(id_ctr, True, True)
-        new_automata = Automata([new_start], [])
+        new_transition = Transition(new_start, new_start, row[0])
+        new_automata = Automata([new_start], [new_transition])
         automatas.append(new_automata)
         id_ctr += 1
         return 1

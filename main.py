@@ -1,5 +1,6 @@
 import sys
 
+# TODO: PRI VYTVORENI CEZ EPSILON, MA IST ASI Z STATU DO STATU PRAZDNA TRANSITION
 
 class Transition:
     def __init__(self, from_state, to_state, symbol):
@@ -49,7 +50,7 @@ class Automata:
 # regex_f = open(sys.argv[1], "r")
 # texts_f = open(sys.argv[2], "r")
 
-regex_f = open("regex4.txt", "r")
+regex_f = open("regex2.txt", "r")
 texts_f = open("my_retazce.txt", "r")
 
 regex = [None] + [line.strip().split(',') for line in regex_f.readlines()]

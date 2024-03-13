@@ -24,7 +24,7 @@ class State:
         return f'(ID: {self.state_id}, start: {self.start}, accept: {self.accept})'
 
     def id(self):
-        return f'{self.state_id}'
+        return self.state_id
 
     def copy(self):
         return State(self.state_id, self.start, self.accept)
@@ -64,12 +64,13 @@ class DFAutomata:
 # regex_f = open(sys.argv[1], "r")
 # texts_f = open(sys.argv[2], "r")
 
-regex_f = open("regex1.txt", "r")
+regex_f = open("regex4.txt", "r")
 texts_f = open("my_retazce.txt", "r")
 
 regex = [None] + [line.strip().split(',') for line in regex_f.readlines()]
 texts = [line.split() for line in texts_f.readlines()]
-automatas = [NFAutomata([], [])]
+nf_automatas = [NFAutomata([], [])]
+df_automatas = []
 
 
 def union(a_l, a_r):
@@ -111,7 +112,7 @@ def union(a_l, a_r):
     new_automata_states.append(new_start)
     new_automata_transitions += transitions
     new_automata = NFAutomata(new_automata_states, new_automata_transitions)
-    automatas.append(new_automata)
+    nf_automatas.append(new_automata)
     return 1
 
 
@@ -154,7 +155,7 @@ def concat(a_l, a_r):
         new_automata_transitions.append(Transition(accepts_state, start_right, ""))
 
     new_automata = NFAutomata(new_automata_states, new_automata_transitions)
-    automatas.append(new_automata)
+    nf_automatas.append(new_automata)
     return 0
 
 
@@ -182,7 +183,7 @@ def iteration(a):
         new_automata_transitions.append(Transition(accept_state, old_start, ""))
 
     new_automata = NFAutomata(new_automata_states, new_automata_transitions)
-    automatas.append(new_automata)
+    nf_automatas.append(new_automata)
     return 0
 
 
@@ -197,9 +198,8 @@ def create_nfautomata(row):
     id_ctr = 0
     if len(row[0]) == 0:
         new_start = State(id_ctr, True, True)
-        new_transition = Transition(new_start, new_start, row[0])
-        new_automata = NFAutomata([new_start], [new_transition])
-        automatas.append(new_automata)
+        new_automata = NFAutomata([new_start], [])
+        nf_automatas.append(new_automata)
         id_ctr += 1
         return 1
     else:
@@ -209,12 +209,31 @@ def create_nfautomata(row):
         id_ctr += 1
         new_transition = Transition(new_start, new_accept, row[0])
         new_automata = NFAutomata([new_start, new_accept], [new_transition])
-        automatas.append(new_automata)
+        nf_automatas.append(new_automata)
         return 2
 
 
 def create_dfautomata():
-    pass
+    nfa = nf_automatas[-1]
+    nfa_states = nfa.states.copy()
+    nfa_transitions = nfa.transitions.copy()
+    dfa_automata = DFAutomata(nfa_states, nfa_transitions)
+
+    print(dfa_automata)
+
+    while True:
+        closure = []
+        if len(dfa_automata.states) == 0:
+            closure.append((dfa_automata.nfa_start_state.id(), False))
+        while any(not tup[1] for tup in closure):
+            for tup in closure:
+                if not tup[1]:
+                    state_id = tup[0]
+                    for transition in dfa_automata.nfa_transitions:
+                        if transition.from_state.state_id == state_id and transition.symbol == "":
+                            if not any(tup[0] == transition.to_state.id() for tup in closure):
+                                closure.append((transition.to_state.id(), False))
+                    closure[closure.index(tup)] = (state_id, True)
 
 
 def app():
@@ -225,14 +244,16 @@ def app():
         if operation in dictionaryOperations:
             if len(arguments) == 1:
                 pass
-                dictionaryOperations[operation](automatas[int(arguments[0])])
+                dictionaryOperations[operation](nf_automatas[int(arguments[0])])
             elif len(arguments) == 2:
-                dictionaryOperations[operation](automatas[int(arguments[0])], automatas[int(arguments[1])])
+                dictionaryOperations[operation](nf_automatas[int(arguments[0])], nf_automatas[int(arguments[1])])
         else:
             create_nfautomata(row)
 
-    for automata in automatas[1:]:
+    for automata in nf_automatas[1:]:
         print(automata)
+
+    create_dfautomata()
 
 
 app()

@@ -1,6 +1,9 @@
 import sys
 
 
+# Classes---------------------------------------------------------------------------------------------------------------
+
+# -------NFA Classes-------
 class Transition:
     def __init__(self, from_state, to_state, symbol):
         self.from_state = from_state
@@ -46,12 +49,15 @@ class NFAutomata:
         return NFAutomata(copied_states, copied_transitions)
 
 
+# -------DFA Classes-------
+
 class DFAutomata:
     def __init__(self, nfa_states, nfa_transitions):
         self.nfa_states = nfa_states
         self.nfa_transitions = nfa_transitions
         self.nfa_accept_states = [state for state in nfa_states if state.accept]
         self.nfa_start_state = [state for state in nfa_states if state.start][0]
+        self.alphabet = list(set([transition.symbol for transition in nfa_transitions if transition.symbol != ""]))
         self.states = []
         self.transitions = []
 
@@ -61,9 +67,21 @@ class DFAutomata:
         return f'DFAutomata(States: [{state_str}], Transitions: [{transition_str}])'
 
 
-# regex_f = open(sys.argv[1], "r")
-# texts_f = open(sys.argv[2], "r")
+class DFAState:
+    def __init__(self, state_id, start, accept):
+        self.state_id = state_id
+        self.start = start
+        self.accept = accept
+        self.checked_whole_alphabet = False
 
+    def id(self):
+        return self.state_id
+
+    def __str__(self):
+        return f'DFAState(ID: {self.state_id}, start: {self.start}, accept: {self.accept})'
+
+
+# INITIALIZATION -------------------------------------------------------------------------------------------------------
 regex_f = open("regex4.txt", "r")
 texts_f = open("my_retazce.txt", "r")
 
@@ -73,6 +91,7 @@ nf_automatas = [NFAutomata([], [])]
 df_automatas = []
 
 
+# NFA Functions---------------------------------------------------------------------------------------------------------
 def union(a_l, a_r):
     automata_left = a_l.copy()
     automata_right = a_r.copy()
@@ -213,29 +232,78 @@ def create_nfautomata(row):
         return 2
 
 
+# DFA Functions---------------------------------------------------------------------------------------------------------
 def create_dfautomata():
-    nfa = nf_automatas[-1]
-    nfa_states = nfa.states.copy()
-    nfa_transitions = nfa.transitions.copy()
-    dfa_automata = DFAutomata(nfa_states, nfa_transitions)
+    dfa = DFAutomata(nf_automatas[-1].states.copy(), nf_automatas[-1].transitions.copy())
 
-    print(dfa_automata)
-
-    while True:
+    # Ak je aspon jeden State, kt. nebol este checknuty, alebo ak je prazdny Automat
+    while not dfa.states or any(state.checked_whole_alphabet is False for state in dfa.states):
         closure = []
-        if len(dfa_automata.states) == 0:
-            closure.append((dfa_automata.nfa_start_state.id(), False))
-        while any(not tup[1] for tup in closure):
-            for tup in closure:
-                if not tup[1]:
-                    state_id = tup[0]
-                    for transition in dfa_automata.nfa_transitions:
-                        if transition.from_state.state_id == state_id and transition.symbol == "":
-                            if not any(tup[0] == transition.to_state.id() for tup in closure):
-                                closure.append((transition.to_state.id(), False))
-                    closure[closure.index(tup)] = (state_id, True)
+        # Ak je prazdny Automat, vytvor prvy
+        if len(dfa.states) == 0:
+            # closure tuple obsahuje id Statu z NFA a info ci z toho Statu uz sme pozreli vsetky Transitions
+            closure_tuple = (dfa.nfa_start_state.id(), False)
+            closure.append(closure_tuple)
+            closure = epsilon_closure(dfa, closure)
+            create_dfa_state(dfa, closure)
+
+        for state in dfa.states:
+            if state.checked_whole_alphabet is False:
+                for char in dfa.alphabet:
+                    closure = check_states_alphabet(dfa, state, char)
+                    closure = epsilon_closure(dfa, closure)
+                    if closure and closure not in [state.id() for state in dfa.states]:
+                        create_dfa_state(dfa, closure)
+                state.checked_whole_alphabet = True
 
 
+def epsilon_closure(dfa, closure):
+    # Pokial mame v closure prvok, ktory este nebol uplne checknuty
+    while any(not tup[1] for tup in closure):
+        # Prejdi cez kazdy State (tuple)
+        for tup in closure:
+            # Ak nebol uplne checknuty
+            if not tup[1]:
+                state_id = tup[0]
+                # Prejdi cez vsetky Transitions v automate
+                for transition in dfa.nfa_transitions:
+                    # Ak z daneho Statu vychadza prazdny Transition
+                    if transition.from_state.state_id == state_id and transition.symbol == "":
+                        # Checknem ze ci najdeny bod cez Transition uz nemam nahodou v closure
+                        # Ak tam nebol tak ho pridam
+                        if not any(tup[0] == transition.to_state.id() for tup in closure):
+                            closure.append((transition.to_state.id(), False))
+                closure[closure.index(tup)] = (state_id, True)
+    return closure
+
+
+def check_if_accepting(dfa, closure):
+    for tup in closure:
+        for state in dfa.nfa_accept_states:
+            if state.id() == tup[0]:
+                return True
+    return False
+
+
+def create_dfa_state(dfa, closure):
+    starting = True if len(dfa.states) == 0 else False
+    accepting = check_if_accepting(dfa, closure)
+    dfa_state = DFAState(closure, starting, accepting)
+    dfa.states.append(dfa_state)
+    return dfa_state
+
+
+def check_states_alphabet(dfa, state, char):
+    closure = []
+    for tup in state.state_id:
+        state_id = tup[0]
+        for transition in dfa.nfa_transitions:
+            if transition.from_state.state_id == state_id and transition.symbol == char:
+                closure.append((transition.to_state.id(), False))
+    return closure
+
+
+# Application-----------------------------------------------------------------------------------------------------------
 def app():
     for i in range(1, len(regex)):
         row = regex[i]

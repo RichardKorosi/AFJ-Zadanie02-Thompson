@@ -82,11 +82,11 @@ class DFAState:
 
 
 # INITIALIZATION -------------------------------------------------------------------------------------------------------
-regex_f = open("regex4.txt", "r")
-texts_f = open("my_retazce.txt", "r")
+regex_f = open(sys.argv[1], "r")
+texts_f = open(sys.argv[2], "r")
 
 regex = [None] + [line.strip().split(',') for line in regex_f.readlines()]
-texts = [line.split() for line in texts_f.readlines()]
+texts = [line.split() if line.strip() != "" else [""] for line in texts_f.readlines()]
 nf_automatas = [NFAutomata([], [])]
 df_automatas = []
 
@@ -235,26 +235,45 @@ def create_nfautomata(row):
 # DFA Functions---------------------------------------------------------------------------------------------------------
 def create_dfautomata():
     dfa = DFAutomata(nf_automatas[-1].states.copy(), nf_automatas[-1].transitions.copy())
+    death_state = DFAState([], False, False)
+    death_state.checked_whole_alphabet = True
 
     # Ak je aspon jeden State, kt. nebol este checknuty, alebo ak je prazdny Automat
     while not dfa.states or any(state.checked_whole_alphabet is False for state in dfa.states):
+        dfa.states.append(death_state)
         closure = []
+
         # Ak je prazdny Automat, vytvor prvy
-        if len(dfa.states) == 0:
+        if len(dfa.states) == 1:
             # closure tuple obsahuje id Statu z NFA a info ci z toho Statu uz sme pozreli vsetky Transitions
             closure_tuple = (dfa.nfa_start_state.id(), False)
             closure.append(closure_tuple)
             closure = epsilon_closure(dfa, closure)
             create_dfa_state(dfa, closure)
 
+        # Prejdi cez vsetky Stavy v Automate
         for state in dfa.states:
+            # Ak este nebol checknuty celym Alphabetom
             if state.checked_whole_alphabet is False:
+                # Prejdi cez kazdy char v Alphabete
                 for char in dfa.alphabet:
                     closure = check_states_alphabet(dfa, state, char)
                     closure = epsilon_closure(dfa, closure)
-                    if closure and closure not in [state.id() for state in dfa.states]:
-                        create_dfa_state(dfa, closure)
+                    # Ak sme nasli neprazdny closure
+                    if closure:
+                        # Ak este neexistuje taky State v Automate, vytvorime ho
+                        if closure not in [dfa_state.state_id for dfa_state in dfa.states]:
+                            create_dfa_state(dfa, closure)
+                        # Najdi State, ktory sme nasli v closure
+                        for dfa_state in dfa.states:
+                            if dfa_state.state_id == closure:
+                                state_to = dfa_state
+                                create_dfa_transitions(dfa, state, state_to, char)
+                    else:
+                        create_dfa_transitions(dfa, state, death_state, char)
                 state.checked_whole_alphabet = True
+    df_automatas.append(dfa)
+    return 0
 
 
 def epsilon_closure(dfa, closure):
@@ -286,7 +305,7 @@ def check_if_accepting(dfa, closure):
 
 
 def create_dfa_state(dfa, closure):
-    starting = True if len(dfa.states) == 0 else False
+    starting = True if len(dfa.states) == 1 else False
     accepting = check_if_accepting(dfa, closure)
     dfa_state = DFAState(closure, starting, accepting)
     dfa.states.append(dfa_state)
@@ -303,8 +322,34 @@ def check_states_alphabet(dfa, state, char):
     return closure
 
 
+def create_dfa_transitions(dfa, state_from, state_to, char):
+    dfa_transition = Transition(state_from, state_to, char)
+    dfa.transitions.append(dfa_transition)
+
+
+def test_string(dfa, string):
+    current_state = None
+    for state in dfa.states:
+        if state.start:
+            current_state = state
+            break
+    for char in string:
+        char_in_alphabet = False
+        for transition in dfa.transitions:
+            if transition.symbol == char:
+                char_in_alphabet = True
+                if transition.from_state == current_state:
+                    current_state = transition.to_state
+                    break
+        if not char_in_alphabet:
+            return False
+
+    return current_state.accept
+
+
 # Application-----------------------------------------------------------------------------------------------------------
 def app():
+    # Create NFAutomatas
     for i in range(1, len(regex)):
         row = regex[i]
         operation = row[0]
@@ -317,11 +362,16 @@ def app():
                 dictionaryOperations[operation](nf_automatas[int(arguments[0])], nf_automatas[int(arguments[1])])
         else:
             create_nfautomata(row)
-
-    for automata in nf_automatas[1:]:
-        print(automata)
-
+    # Create DFAutomata
     create_dfautomata()
+    # Test string
+    for text in texts[1:]:
+
+        print("Retazec: ", "(prazdny)" if not text[0] else text[0], end=" | ")
+
+        print("ANO" if test_string(df_automatas[-1], text[0]) else "NIE", "|")
+
+    return 0
 
 
 app()

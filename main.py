@@ -30,7 +30,7 @@ class State:
         return State(self.state_id, self.start, self.accept)
 
 
-class Automata:
+class NFAutomata:
     def __init__(self, states, transitions):
         self.states = states
         self.transitions = transitions
@@ -38,24 +38,38 @@ class Automata:
     def __str__(self):
         state_str = ', '.join(str(state) for state in self.states)
         transition_str = ', '.join(str(transition) for transition in self.transitions)
-        return f'Automata(States: [{state_str}], Transitions: [{transition_str}])'
+        return f'NFAutomata(States: [{state_str}], Transitions: [{transition_str}])'
 
     def copy(self):
         copied_states = [state.copy() for state in self.states]
         copied_transitions = [transition.copy() for transition in self.transitions]
-        return Automata(copied_states, copied_transitions)
+        return NFAutomata(copied_states, copied_transitions)
+
+
+class DFAutomata:
+    def __init__(self, nfa_states, nfa_transitions):
+        self.nfa_states = nfa_states
+        self.nfa_transitions = nfa_transitions
+        self.nfa_accept_states = [state for state in nfa_states if state.accept]
+        self.nfa_start_state = [state for state in nfa_states if state.start][0]
+        self.states = []
+        self.transitions = []
+
+    def __str__(self):
+        state_str = ', '.join(str(state) for state in self.states)
+        transition_str = ', '.join(str(transition) for transition in self.transitions)
+        return f'DFAutomata(States: [{state_str}], Transitions: [{transition_str}])'
 
 
 # regex_f = open(sys.argv[1], "r")
 # texts_f = open(sys.argv[2], "r")
 
-regex_f = open("regex2.txt", "r")
+regex_f = open("regex1.txt", "r")
 texts_f = open("my_retazce.txt", "r")
 
 regex = [None] + [line.strip().split(',') for line in regex_f.readlines()]
 texts = [line.split() for line in texts_f.readlines()]
-
-automatas = [None]
+automatas = [NFAutomata([], [])]
 
 
 def union(a_l, a_r):
@@ -96,7 +110,7 @@ def union(a_l, a_r):
     transitions = [Transition(new_start, left_start, ""), Transition(new_start, right_start, "")]
     new_automata_states.append(new_start)
     new_automata_transitions += transitions
-    new_automata = Automata(new_automata_states, new_automata_transitions)
+    new_automata = NFAutomata(new_automata_states, new_automata_transitions)
     automatas.append(new_automata)
     return 1
 
@@ -139,7 +153,7 @@ def concat(a_l, a_r):
     for accepts_state in accept_states_left:
         new_automata_transitions.append(Transition(accepts_state, start_right, ""))
 
-    new_automata = Automata(new_automata_states, new_automata_transitions)
+    new_automata = NFAutomata(new_automata_states, new_automata_transitions)
     automatas.append(new_automata)
     return 0
 
@@ -167,17 +181,24 @@ def iteration(a):
     for accept_state in accept_states:
         new_automata_transitions.append(Transition(accept_state, old_start, ""))
 
-    new_automata = Automata(new_automata_states, new_automata_transitions)
+    new_automata = NFAutomata(new_automata_states, new_automata_transitions)
     automatas.append(new_automata)
     return 0
 
 
-def create_automata(row):
+dictionaryOperations = {
+    "I": iteration,
+    "U": union,
+    "C": concat,
+}
+
+
+def create_nfautomata(row):
     id_ctr = 0
     if len(row[0]) == 0:
         new_start = State(id_ctr, True, True)
         new_transition = Transition(new_start, new_start, row[0])
-        new_automata = Automata([new_start], [new_transition])
+        new_automata = NFAutomata([new_start], [new_transition])
         automatas.append(new_automata)
         id_ctr += 1
         return 1
@@ -187,16 +208,13 @@ def create_automata(row):
         new_accept = State(id_ctr, False, True)
         id_ctr += 1
         new_transition = Transition(new_start, new_accept, row[0])
-        new_automata = Automata([new_start, new_accept], [new_transition])
+        new_automata = NFAutomata([new_start, new_accept], [new_transition])
         automatas.append(new_automata)
         return 2
 
 
-dictionaryOperations = {
-    "I": iteration,
-    "U": union,
-    "C": concat,
-}
+def create_dfautomata():
+    pass
 
 
 def app():
@@ -211,7 +229,7 @@ def app():
             elif len(arguments) == 2:
                 dictionaryOperations[operation](automatas[int(arguments[0])], automatas[int(arguments[1])])
         else:
-            create_automata(row)
+            create_nfautomata(row)
 
     for automata in automatas[1:]:
         print(automata)
